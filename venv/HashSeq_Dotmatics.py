@@ -3,6 +3,7 @@ import json
 import sys
 import os
 from typing import Callable, Any
+import yaml
 
 class DotmaticsClient():
 
@@ -11,36 +12,19 @@ class DotmaticsClient():
         self.env = env
         self.username = os.environ.get('DOTMATICS_USERNAME')
         self.password = os.environ.get('DOTMATICS_PASSWORD')
-        self.searchParams = self.readSearchParamsFromConfigFile()
         self.setClassVariables()
 
-    def readSearchParamsFromConfigFile(self):
-        entry_dict = {}
-        file = open('../config.txt', 'r')
-        content = file.read()
-        entries = content.split("\n")
-        for entry in entries:
-            p = entry.split("=")
-            entry_dict[p[0]] = p[1]
-        return entry_dict
-
     def setClassVariables(self):
-        self.HashSeqProjectId = self.searchParams['projectID']
-        if self.env == 'Prod':
-            self.server = self.searchParams['prodServer']
-            self.STUDIES_SUMMARY_HASHSEQ = self.searchParams['prod_StudiesSummaryHashSeq']
-            self.CLT_HASH_BIO_TECH = self.searchParams['prod_CltHashBioTech']
-            self.CLT_TEST_SAMPLE = self.searchParams['prod_TestSample']
-            self.CLT_POOL = self.searchParams['prod_CltPool']
-            self.CLT_ASSAY_HASHSEQ = self.searchParams['prod_CltAssayHashSeq']
-        else:
-            self.server = self.searchParams['testServer']
-            self.STUDIES_SUMMARY_HASHSEQ = self.searchParams['test_StudiesSummaryHashSeq']
-            self.CLT_HASH_BIO_TECH = self.searchParams['test_CltHashBioTech']
-            self.CLT_TEST_SAMPLE = self.searchParams['test_TestSample']
-            self.CLT_POOL = self.searchParams['test_CltPool']
-            self.CLT_ASSAY_HASHSEQ = self.searchParams['test_CltAssayHashSeq']
-            # TODO: Fill in more data sources as needed
+        with open("../config.yaml", "r") as f:
+            config = yaml.load(f, Loader=yaml.FullLoader)
+        self.HashSeqProjectId =config['projectID']
+        self.server = config[self.env]['server']
+        self.STUDIES_SUMMARY_HASHSEQ = config[self.env]['studiesSummaryHashSeq']
+        self.CLT_HASH_BIO_TECH = config[self.env]['cltHashBioTech']
+        self.CLT_TEST_SAMPLE = config[self.env]['testSample']
+        self.CLT_POOL = config[self.env]['cltPool']
+        self.CLT_ASSAY_HASHSEQ = config[self.env]['cltAssayHashSeq']
+        # TODO: Fill in more data sources as needed
 
     def getHashSeqExperiment(self, experimentId: str):
         datasources = ','.join([
@@ -99,7 +83,7 @@ class DotmaticsClient():
         return filter_(response.json().get(experiment_id).get('dataSources').get(str(data_source_id)).values())
 
 if __name__ == '__main__':
-    dotmatics_client = DotmaticsClient('Prod')
+    dotmatics_client = DotmaticsClient('prod')
     result = dotmatics_client.query_form('CLT_POOL_NAMES', '141885', lambda dss: [_.get('HASHTAG_ID') for _ in dss])
     #result = dotmatics_client.getHashSeqExperiment('141885')
     print(json.dumps(result, indent=4))
